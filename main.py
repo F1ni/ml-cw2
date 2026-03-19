@@ -6,6 +6,9 @@ import torchvision
 import torchvision.transforms as transforms
 from simclr import SimCLR
 from simclr.modules import NT_Xent
+import torch.nn.functional as F
+from sklearn.cluster import KMeans
+import numpy as np
 
 
 
@@ -96,6 +99,95 @@ for epoch in range(epochs):
             print(f"Epoch [{epoch+1}/{epochs}], Batch [{batch_idx}/{len(train_loader)}], Loss: {loss.item():.4f}")
 
 
-# stage 2 - k means clustering alogirhtm 
 
 
+# clean transform
+
+clean_transform = transforms.Compose([
+    transforms.ToTensor()
+])
+
+clean_dataset = torchvision.datasets.CIFAR10(
+    root="./data",
+    train=True,
+    download=False,
+    transform=clean_transform
+)
+
+clean_loader = torch.utils.data.DataLoader(
+    clean_dataset,
+    batch_size=512,
+    shuffle=False
+)
+
+
+model.eval()
+
+all_features = []
+all_labels = []
+
+with torch.no_grad():
+    print("Features")
+
+    for images, labels in clean_loader:
+        images = images.to(device)
+        
+        features = encoder(images)
+
+        all_features.append(features.cpu())
+        all_features.append(labels.cpu())
+
+
+all_features = torch.cat(all_features, dim=0)
+all_labels = torch.cat(all_labels, dim=0)
+
+all_features_normalized = F.normalize(all_features, p=2, dim=1)
+
+print(f"Extraction complete! Final array shape: {all_features_normalized.shape}")
+
+
+
+# k means clustering
+
+label_budget = 7
+
+k_means_algorithm = KMeans(n_clusters=label_budget, random_state=42, n_init='auto')
+
+k_means_algorithm.fit(all_features_normalized)
+
+final_typical_images = []
+
+from sklearn.neighbors import NearestNeighbors
+
+cluster_assignments = k_means_algorithm.labels_
+
+nearest = NearestNeighbors(n_neighbors=20,algorithm='ball_tree')
+
+for i in range(label_budget):
+    cluster_i = np.where(cluster_assignments == i)[0]
+
+    cluster_features = all_features_normalized[cluster_i]
+
+    fit = nearest.fit(cluster_features)
+
+    distance, indicies = fit.kneighbors(cluster_features)
+
+
+    average_distances = distance.mean(axis=1)
+
+    
+
+    typicality_score = 1 / average_distances
+
+
+
+    best = np.argmax(typicality_score)
+
+    best_id = cluster_i[best]
+
+    final_typical_images.append(best_id)
+
+    print(f"Cluster {i} winner: Image #{best_id}")
+
+
+print("All done! Here are your 7 typical images:", final_typical_images)
