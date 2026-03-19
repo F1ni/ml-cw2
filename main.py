@@ -28,6 +28,9 @@ class ContrastiveTransformations(object):
 
     def __call__(self, x):
         return [self.base_transforms(x) for i in range(self.n_views)]
+    
+
+    
 
 base_transform = transforms.Compose([
     
