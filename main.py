@@ -1,6 +1,3 @@
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
 # step 1 - setup and feature extraction
 import torch
 import torchvision.transforms as transforms, torchvision
@@ -9,9 +6,7 @@ import torchvision
 import numpy as np
 from simclr import SimCLR
 from simclr.modules import NT_Xent
-from simclr.modules.resnet_hacks import modify_resnet_model
-
-
+import os
 
 # augmentations will need to be done here
 # random resized crops - The algorithm takes a random section of the image
@@ -21,6 +16,7 @@ from simclr.modules.resnet_hacks import modify_resnet_model
 # color jitter random apply - from the simclr github they used
 # Random grayscaling
 
+# using simclr library
 
 class ContrastiveTransformations(object):
 
@@ -55,15 +51,13 @@ if __name__ == '__main__':
         batch_size=512,
         shuffle=True,
         drop_last=True,
-        num_workers=6,
-        pin_memory=True,
-        persistent_workers=True
+        num_workers=4,
+        pin_memory=True
     )
 
 
     encoder = resnet18()
     n_features = encoder.fc.in_features
-    encoder.fc = torch.nn.Identity()
     model = SimCLR(encoder, projection_dim=128, n_features=n_features)
 
 
@@ -90,19 +84,10 @@ if __name__ == '__main__':
 
     epochs = 500
 
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser, T_max=epochs)
-    WARMUP_EPOCHS = 10
-
-    def get_lr_multiplier(epoch):
-        if epoch < WARMUP_EPOCHS:
-            return (epoch + 1) / WARMUP_EPOCHS  # linear warmup
-        return 1.0  # cosine scheduler takes over after
-
-    warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(optimiser, lr_lambda=get_lr_multiplier)
-    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=epochs - WARMUP_EPOCHS)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimiser, T_max=epochs)
 
     start_epoch = 0
-    checkpoint_path = 'simclr_checkpoint_modify_resnet.pth'
+    checkpoint_path = 'simclr_checkpoint_epoch_save_checkpoint.pth'
 
     if os.path.exists(checkpoint_path):
         print(f"Found a save state! Resuming from '{checkpoint_path}'...")
@@ -112,7 +97,7 @@ if __name__ == '__main__':
         # Restore the model, optimizer, and scheduler
         model.load_state_dict(checkpoint['model_state'])
         optimiser.load_state_dict(checkpoint['optimizer_state'])
-        #$ scheduler.load_state_dict(checkpoint['scheduler_state'])
+        scheduler.load_state_dict(checkpoint['scheduler_state'])
         
         # Update the starting point
         start_epoch = checkpoint['epoch']
@@ -142,30 +127,27 @@ if __name__ == '__main__':
 
             total_loss+= loss.item()
 
+            if batch_idx % 50 == 0:
+                print(f"Epoch [{epoch+1}/{epochs}], Batch [{batch_idx}/{len(train_loader)}], Loss: {loss.item():.4f}")
+
 
 
         avg_epoch_loss = total_loss / len(train_loader)
         print(f"--- End of Epoch {epoch+1} | Average Loss: {avg_epoch_loss:.4f} ---")
 
-        if epoch < WARMUP_EPOCHS:
-            warmup_scheduler.step()
-        else:
-            cosine_scheduler.step()
+        scheduler.step()
 
-
-        if (epoch + 1) % 10 == 0:
-
-            save_state = {
-                'epoch': epoch + 1, # Save the NEXT epoch as the starting point
-                'model_state': model.state_dict(),
-                'optimizer_state': optimiser.state_dict(),
-                # 'scheduler_state': scheduler.state_dict()
-            }
-            
-            torch.save(save_state, checkpoint_path)
-            print(f"Checkpoint saved: {checkpoint_path}")
+        save_state = {
+            'epoch': epoch + 1, # Save the NEXT epoch as the starting point
+            'model_state': model.state_dict(),
+            'optimizer_state': optimiser.state_dict(),
+            'scheduler_state': scheduler.state_dict()
+        }
+        
+        torch.save(save_state, checkpoint_path)
+        print(f"Checkpoint saved: {checkpoint_path}")
 
 
     print("Training complete! Saving the final model...")
-    torch.save(model.state_dict(), 'best_simclr_modify_resnet.pth')
+    torch.save(model.state_dict(), 'best_simclr_model_500_epochs.pth')
     print("Model saved successfully. You can now run feature extraction!")
