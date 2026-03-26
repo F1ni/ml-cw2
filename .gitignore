@@ -2,7 +2,4 @@ data/
 *.tar.gz
 *.zip
 *.pkl
-*.pt
 *.tar
-best_simclr_model_200_epochs.pth
-cleaned_simclr_cifar10.pth
