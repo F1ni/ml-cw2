@@ -5,3 +5,7 @@ scikit-learn
 matplotlib
 numpy
 collections
+easydict
+termcolor
+scipy
+faiss-cpu
