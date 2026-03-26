@@ -8,7 +8,7 @@
 ## Prerequisites
 1. Clone Repository
    ```bash
-   git clone [https://github.com/F1ni/ml-cw2.git](https://github.com/F1ni/ml-cw2.git)
+   git clone https://github.com/F1ni/ml-cw2.git
    cd ml-cw2
 
 2. Install Dependencies
