@@ -32,4 +32,6 @@ These features and weights were extracted using 'extract_features.ipynb'.
 ### main.ipynb
 Main.ipynb is the code to reproduce the results from the original paper.
 
+Run all cells to see the output results that are present in the report. Results may differ slightly due to randomness.
+
 Results are shown in the reports.
