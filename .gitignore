@@ -2,4 +2,3 @@ cifar10data/
 *.tar.gz
 *.zip
 *.pkl
-*.tar
