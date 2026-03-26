@@ -3,7 +3,6 @@ data/
 *.zip
 *.pkl
 *.pt
-UnsupervisedClassification/
 *.tar
 best_simclr_model_200_epochs.pth
 cleaned_simclr_cifar10.pth
